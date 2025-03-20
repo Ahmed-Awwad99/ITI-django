@@ -6,7 +6,13 @@ from django.views import View
 from django.views.generic import ListView
 from django.views.generic.edit import DeleteView
 from django.urls import reverse_lazy
-
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import TraineeSerializer
+from rest_framework import generics
+from rest_framework.decorators import api_view
+from rest_framework import viewsets
 
 courses = Course.objects.all()
 class TraineeListView(ListView):
@@ -58,4 +64,38 @@ class UpdateTraineeView(View):
         trainee.course = Course.objects.get(id=request.POST['course'])
         trainee.save()
         return redirect('trainee_list')
+
+class TraineeListCreateAPIView(APIView):
+    def get(self, request):
+        trainees = Trainee.objects.all()
+        serializer = TraineeSerializer(trainees, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = TraineeSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class TraineeUpdateDeleteAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Trainee.objects.all()
+    serializer_class = TraineeSerializer
+
+@api_view(['PUT'])
+def track_update(request, pk):
+    try:
+        trainee = Trainee.objects.get(pk=pk)
+    except Trainee.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = TraineeSerializer(trainee, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class TraineeViewSet(viewsets.ModelViewSet):
+    queryset = Trainee.objects.all()
+    serializer_class = TraineeSerializer
 
